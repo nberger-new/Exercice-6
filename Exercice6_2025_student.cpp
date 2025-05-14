@@ -39,9 +39,14 @@ void triangular_solve(vector<T> const& diag,  vector<T> const& lower, vector<T> 
 }
 
 // TODO Potentiel V(x) :
-double V()
+double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, double omega_0)
 {
-    return 0;
+    double V_(0);
+    if (x_ >= xL_ && x_ <= xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xa_)/(xL_ - xa_), 2); }
+    else if (x_ >= xL_ && x_ <= xa_) { V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2) }
+    else if (x_ >= xL_ && x_ <= xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xb_)/(xR_ - xb_), 2); }
+    else { cerr << "Choisir une position valide !" << endl;}
+    return V_;
 }
 
 // Declaration des diagnostiques de la particule d'apres sa fonction d'onde psi :
@@ -54,13 +59,18 @@ double V()
 
 
 // TODO: calculer la probabilite de trouver la particule dans un intervalle [x_i, x_j]
-double prob()
+double prob(int I, int J, vec_cmplx Psi)
 {
-    return 0;
+    sum  = 0;
+    for (i = I; i < J; i++) {
+        sum += 0.5*(Psi[i]*std::conj(Psi[i]) + Psi[i+1]*std::conj(Psi[i+1]))
+    }
+    return sum;
 }
 
 // TODO calculer l'energie
-double E(){
+double E(vec_cmplx Psi){
+
     return 0;
 }
 
@@ -83,15 +93,31 @@ double pmoy()
 }
 
 // TODO calculer p.^2 moyenne
-double p2moy()
+double p2moy(double h, vector <double> Psi, vector <double> upper_, vector <double> diag_)
 {
-    return 0;
+    double sum = 0;
+    int N = Psi.size();
+    for (int i = 0; i < N - 1; ++i) {
+        double p_term_i = -1/h*(Psi[i -1] - 2*Psi[i] + Psi[i+1]);
+        double p_term_i_next = -1/h*(Psi[i] - 2*Psi[i + 1] + Psi[i+2]);
+        sum = Psi[i]*p_term_i + Psi[i+1]*p_term_i_next;
+    }
+    return 0.5*sum;
 }
 
 // TODO calculer la normalization
-vec_cmplx normalize(vec_cmplx const& psi, double const& dx)
+vec_cmplx normalize(vec_cmplx const& Psi, double const& dx)
 {
-    vec_cmplx psi_norm(psi.size());
+    vec_cmplx psi_norm(psi.size(), 0.);
+    int N = Psi.size();
+    double sum = 0.;
+    for (int i = 0; i < N - 1; ++i) {
+        sum += std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1];
+    }
+    sum *= dx/2;
+    for (int i = 0; i < N; ++i) {
+        psi_norm[i] = Psi[i]/std::sqrt(sum);
+    }
     return psi_norm;
 }
 
@@ -138,7 +164,7 @@ main(int argc, char** argv)
     int Nintervals = configFile.get<int>("Nintervals");
 
     // TODO: initialiser le paquet d'onde, equation (4.116) du cours
-    double k0 = 1;
+    double k0 = 2*PI*n/L;
 
     int Npoints = Nintervals + 1;
     double dx = (xR - xL) / Nintervals;
@@ -152,7 +178,7 @@ main(int argc, char** argv)
         x[i] = xL + i * dx;
 
     // Initialisation de la fonction d'onde :
-    vec_cmplx psi(Npoints);
+    vec_cmplx psi(Npoints, 0.);
 
     // initialization time and position to check Probability
     double t = 0;
@@ -160,7 +186,7 @@ main(int argc, char** argv)
   
     // TODO initialize psi
     for (int i(0); i < Npoints; ++i)
-    	psi[i] = 1;
+    	psi[i] = std::exp(complex_i*k0*x[i])*std::exp(-pow((x[i]-x[0]), 2)/(2*sigma0*sigma0));
    
     // Modifications des valeurs aux bords :
     psi[0] = complex<double>(0., 0.);
@@ -176,34 +202,39 @@ main(int argc, char** argv)
     vec_cmplx dB(Npoints), aB(Nintervals),
       cB(Nintervals); // matrice du membre de droite de l'equation (4.100)
 
-    complex<double> a =
-      complex_i * hbar * dt / (4.*m*dx*dx); // Coefficient complexe a de l'equation (4.100)
+    complex<double> a = complex_i * hbar * dt / (4.*m*dx*dx); // Coefficient complexe a de l'equation (4.100)
+    complex<double> b = complex_i * dt / (2*hbar); // Coefficient complexe a de l'equation (4.100)
 
     // TODO: calculer les éléments des matrices A, B et H.
     // Ces matrices sont stockées sous forme tridiagonale, d:diagonale, c et a: diagonales
     // supérieures et inférieures
     for (int i(0); i < Npoints; ++i) // Boucle sur les points de maillage
     {
-        dH[i] = 1;
-        dA[i] = 1;
-        dB[i] = 1;
+        V_i = V(V0, x[i], xL, xR, xa, xb, om0);
+        dH[i] = -hbar*hbar/(4*dx*dx) + V_i;
+        dA[i] = 1 + 2*a + b*V_i;
+        dB[i] = 1 + 2*a + b*V_i;
     }
     for (int i(0); i < Nintervals; ++i) // Boucle sur les intervalles
     {
-        aH[i] = 0;
-        aA[i] = 0;
-        aB[i] = 0;
-        cH[i] = 0;
-        cA[i] = 0;
-        cB[i] = 0;
+        aH[i] = -hbar*hbar/(4*dx*dx);
+        aA[i] = -a;
+        aB[i] = a;
+        cH[i] = -hbar*hbar/(4*dx*dx);
+        cA[i] = -a;
+        cB[i] = a;
     }
 
     // Conditions aux limites: psi nulle aux deux bords
     // TODO: Modifier les matrices A et B pour satisfaire les conditions aux limites
-
-
-
-
+    aA[0] = 0;
+    aB[0] = 0;
+    cA[0] = 0;
+    cB[0] = 0;
+    aA[Nintervals-1] = 0;
+    aB[Nintervals-1] = 0;
+    cA[Nintervals-1] = 0;
+    cB[Nintervals-1] = 0;
 
     // Fichiers de sortie :
     string output = configFile.get<string>("output");
