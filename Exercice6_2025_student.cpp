@@ -360,12 +360,9 @@ int main(int argc, char** argv)
 
     } // Fin de la boucle temporelle
 
-
-
-
-
     fichier_observables.close();
     fichier_psi.close();
+    fichier_inc.close();
 
     const auto simulationEnd = std::chrono::steady_clock::now();
     const std::chrono::duration<double> elapsedSeconds = simulationEnd - simulationStart;
