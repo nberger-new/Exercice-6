@@ -73,22 +73,31 @@ double prob(int I, int J, vec_cmplx const& Psi)
 double E(vec_cmplx const& Psi, vec_cmplx const& H_up, vec_cmplx const& H_down, vec_cmplx const& H_diag, double const& dx)
 {
     double E = 0;
+    vec_cmplx HPsi(Psi.size(), 0.0);
     for (int i = 0; i < Psi.size(); ++i) {
-        E += (conj(Psi[i])*H_diag[i]*Psi[i]).real();
-        if (i > 0) { E += (std::conj(Psi[i])*H_up[i-1]*Psi[i-1]).real() + (std::conj(Psi[i])*H_up[i]*Psi[i]).real(); }
-        if (i < Psi.size() - 1) { E += (std::conj(Psi[i+1])*H_diag[i+1]*Psi[i+1]).real() + (std::conj(Psi[i])*H_down[i+1]*Psi[i]).real(); }
-        if (i < Psi.size() - 2) { E += (std::conj(Psi[i+1])*H_down[i+2]*Psi[i+1]).real(); }
+        HPsi[i] += H_diag[i]*Psi[i];
+        if (i > 0) { HPsi[i] += H_down[i-1]*Psi[i-1]; }
+        if (i < Psi.size() - 1) { HPsi[i] += H_up[i+1]*Psi[i+1]; }
+    }
+    for (int i = 0; i < Psi.size()-1; ++i) {
+        E += std::real(std::conj(Psi[i])*HPsi[i] + std::conj(Psi[i+1])*HPsi[i+1]);
     }
     E *= dx/2.0;
-    return E; //norm E ???
+    return E;
 }
+
+// E += std::real(std::conj(Psi[i])*H_diag[i]*Psi[i]);
+// if (i > 0) { E += std::real(std::conj(Psi[i])*H_up[i-1]*Psi[i]); }
+// if (i < Psi.size() - 1) { E += std::real(std::conj(Psi[i])*H_down[i+1]*Psi[i]  + std::conj(Psi[i+1])*H_diag[i+1]*Psi[i+1] + std::conj(Psi[i+1])*H_up[i]*Psi[i+1]); }
+// if (i < Psi.size() - 2) { E += std::real(std::conj(Psi[i+1])*H_down[i+2]*Psi[i+1]); }
+// cout << " At i = " << i << " E = " << E << endl;
 
 // TODO calculer xmoyenne
 double xmoy(vec_cmplx const& Psi, vector<double> const& x_, double const& dx)
 {
     double x_mean = 0;
     for (int i = 0; i < Psi.size(); ++i) {
-        x_mean += (std::conj(Psi[i])*x_[i]*Psi[i]).real() + (std::conj(Psi[i+1])*x_[i+1]*Psi[i+1]).real();
+        x_mean += std::real(std::conj(Psi[i])*x_[i]*Psi[i] + std::conj(Psi[i+1])*x_[i+1]*Psi[i+1]);
     }
     return dx*x_mean/2.;
 }
@@ -98,7 +107,7 @@ double x2moy(vec_cmplx const& Psi, vector<double> const& x_, double const& dx)
 {
     double x2_mean = 0;
     for (int i = 0; i < Psi.size(); ++i) {
-        x2_mean += (std::conj(Psi[i])*x_[i]*x_[i]*Psi[i]).real() + (std::conj(Psi[i+1])*x_[i+1]*x_[i+1]*Psi[i+1]).real();
+        x2_mean += std::real(std::conj(Psi[i])*x_[i]*x_[i]*Psi[i] + std::conj(Psi[i+1])*x_[i+1]*x_[i+1]*Psi[i+1]);
     }
     return dx*x2_mean/2.;
 }
@@ -118,9 +127,9 @@ double pmoy(vec_cmplx const& Psi, double const& dx)
     der_Psi[Psi.size() - 1] = Psi[Psi.size()-2]/dx;
 
     for (int i = 1; i < Psi.size() - 1; ++i) {
-        p_mean += (std::conj(Psi[i])*der_Psi[i]).real() + (std::conj(Psi[i+1])*der_Psi[i+1]).real();
+        p_mean += std::real(std::conj(Psi[i])*der_Psi[i] + std::conj(Psi[i+1])*der_Psi[i+1]);
     }
-    return (dx*complex_i*p_mean).real()/2.;
+    return std::real(dx*complex_i*p_mean/2.);
 }
 
 // TODO calculer p.^2 moyenne
@@ -132,7 +141,7 @@ double p2moy(vec_cmplx const& Psi, double const& dx)
         der_2Psi[i] = (Psi[i+1] - Psi[i] - Psi[i] + Psi[i-1])/(dx*dx);
     }
     for (int i = 0; i < Psi.size() - 1; ++i) {
-        sum += (std::conj(Psi[i])*der_2Psi[i]).real() + (std::conj(Psi[i+1])*der_2Psi[i+1]).real();
+        sum += std::real(std::conj(Psi[i])*der_2Psi[i] + std::conj(Psi[i+1])*der_2Psi[i+1]);
     }
     return -dx*sum/2.;
 }
@@ -143,7 +152,7 @@ vec_cmplx normalize(vec_cmplx const& Psi, double const& dx)
     vec_cmplx psi_norm(Psi.size(), 0.);
     double sum = 0.;
     for (int i = 0; i < Psi.size() - 1; ++i) {
-        sum += (std::conj(Psi[i])*Psi[i]).real() + (std::conj(Psi[i+1])*Psi[i+1]).real();
+        sum += std::real(std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1]);
     }
     sum *= dx/2;
     for (int i = 0; i < Psi.size(); ++i) {
@@ -215,8 +224,10 @@ int main(int argc, char** argv)
     unsigned int Nx0 = floor((0 - xL)/(xR-xL)*Npoints); //chosen xR*0.5 since top of potential is at half x domain
   
     // TODO initialize psi
-    for (int i(0); i < Npoints; ++i)
-    	psi[i] = std::exp(complex_i*k0*x[i])*std::exp(-pow((x[i]-x[0]), 2)/(2*sigma0*sigma0));
+    for (int i(0); i < Npoints; ++i) {
+    	psi[i] = std::exp(complex_i*k0*x[i])*std::exp(-pow((x[i]-x0), 2)/(2*sigma0*sigma0));
+      // cout << "i = " << i << " with " << psi[i] << endl;
+    }
    
     // Modifications des valeurs aux bords :
     psi[0] = complex<double>(0., 0.);
@@ -224,7 +235,9 @@ int main(int argc, char** argv)
     
     // Normalisation :
     psi = normalize(psi, dx);
-
+    for (int i(0); i < Npoints; ++i) {
+      cout << "i = " << i << " with " << psi[i] << endl;
+    }
     // Matrices (d: diagonale, a: sous-diagonale, c: sur-diagonale) :
     vec_cmplx dH(Npoints), aH(Nintervals), cH(Nintervals); // matrice Hamiltonienne
     vec_cmplx dA(Npoints), aA(Nintervals),
@@ -233,24 +246,24 @@ int main(int argc, char** argv)
       cB(Nintervals); // matrice du membre de droite de l'equation (4.100)
 
     complex<double> a = complex_i * hbar * dt / (4.*m*dx*dx); // Coefficient complexe a de l'equation (4.100)
-    complex<double> b = complex_i * dt / (2*hbar); // Coefficient complexe a de l'equation (4.100)
-
+    complex<double> b = complex_i * dt / (2.*hbar); // Coefficient complexe a de l'equation (4.100)
+    complex<double> complex_1 = complex<double>(1., 0);
     // TODO: calculer les éléments des matrices A, B et H.
     // Ces matrices sont stockées sous forme tridiagonale, d:diagonale, c et a: diagonales
     // supérieures et inférieures
     for (int i(0); i < Npoints; ++i) // Boucle sur les points de maillage
     {
         double V_i = V(V0, x[i], xL, xR, xa, xb, om0);
-        dH[i] = -hbar*hbar/(4*dx*dx) + V_i;
-        dA[i] = 1. + 2.*a + b*V_i;
-        dB[i] = 1. + 2.*a + b*V_i;
+        dH[i] = hbar*hbar/(m*dx*dx) + V_i;
+        dA[i] = complex_1 + 2.*a + b*V_i;
+        dB[i] = complex_1 - 2.*a - b*V_i;
     }
     for (int i(0); i < Nintervals; ++i) // Boucle sur les intervalles
     {
-        aH[i] = -hbar*hbar/(4*dx*dx);
+        aH[i] = -hbar*hbar/(2*m*dx*dx);
         aA[i] = -a;
         aB[i] = a;
-        cH[i] = -hbar*hbar/(4*dx*dx);
+        cH[i] = -hbar*hbar/(2*m*dx*dx);
         cA[i] = -a;
         cB[i] = a;
     }
@@ -272,14 +285,17 @@ int main(int argc, char** argv)
     ofstream fichier_potentiel((output + "_pot.out").c_str());
     fichier_potentiel.precision(15);
     for (int i(0); i < Npoints; ++i)
-        fichier_potentiel << x[i] << " " <<V(V0, x[i], xL, xR, xa, xb, om0) << endl;
+        fichier_potentiel << x[i] << " " << V(V0, x[i], xL, xR, xa, xb, om0) << endl;
     fichier_potentiel.close();
 
-    ofstream fichier_psi((output + "_psi2.out").c_str());
+    ofstream fichier_psi((output + "_psi.out").c_str());
     fichier_psi.precision(6);
 
     ofstream fichier_observables((output + "_obs.out").c_str());
     fichier_observables.precision(15);
+
+    ofstream fichier_inc((output + "_inc.out").c_str());
+    fichier_inc.precision(15);
 
     // t0 writing
     for (int i(0); i < Npoints; ++i){
@@ -301,6 +317,12 @@ int main(int argc, char** argv)
                 << " " << E(psi, cH, dH, aH, dx) << " " << xmoy (psi, x, dx) << " "
                 << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
     }
+
+    double delta_mean_x = std::sqrt(x2moy(psi, x, dx) - pow(xmoy (psi, x, dx), 2));
+    double delta_mean_p = std::sqrt(p2moy(psi, dx) - pow(pmoy (psi, dx), 2));
+
+    fichier_inc << t << " " << delta_mean_x << " " << delta_mean_p << endl;
+
     // Boucle temporelle :    
     while (t < tfin) {
 
@@ -330,6 +352,11 @@ int main(int argc, char** argv)
         fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
                             << " " << E(psi, cH, dH, aH, dx) << " " << xmoy (psi, x, dx) << " "
                             << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
+
+        double delta_mean_x = std::sqrt(x2moy(psi, x, dx) - pow(xmoy (psi, x, dx), 2));
+        double delta_mean_p = std::sqrt(p2moy(psi, dx) - pow(pmoy (psi, dx), 2));
+
+        fichier_inc << t << " " << delta_mean_x << " " << delta_mean_p << endl;
 
     } // Fin de la boucle temporelle
 
