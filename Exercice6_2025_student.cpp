@@ -1,6 +1,7 @@
 #include "ConfigFile.tpp"
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 #include <complex> // Pour les nombres complexes
 #include <fstream>
 #include <iomanip>
@@ -42,9 +43,9 @@ void triangular_solve(vector<T> const& diag,  vector<T> const& lower, vector<T> 
 double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, double omega_0)
 {
     double V_(0);
-    if (x_ >= xL_ && x_ <= xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xa_)/(xL_ - xa_), 2); }
-    else if (x_ >= xL_ && x_ <= xa_) { V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2) }
-    else if (x_ >= xL_ && x_ <= xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xb_)/(xR_ - xb_), 2); }
+    if (x_ >= xL_ && x_ < xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xa_)/(1 - xa_/xL_), 2); }
+    else if (x_ >=  xa_ && x_ <= xb_) { V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2); }
+    else if (x_ > xb_ && x_ <= xR_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xb_)/(1 - xb_/xR_), 2); }
     else { cerr << "Choisir une position valide !" << endl;}
     return V_;
 }
@@ -59,63 +60,93 @@ double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, 
 
 
 // TODO: calculer la probabilite de trouver la particule dans un intervalle [x_i, x_j]
-double prob(int I, int J, vec_cmplx Psi)
+double prob(int I, int J, vec_cmplx const& Psi)
 {
-    sum  = 0;
-    for (i = I; i < J; i++) {
-        sum += 0.5*(Psi[i]*std::conj(Psi[i]) + Psi[i+1]*std::conj(Psi[i+1]))
+    double sum  = 0;
+    for (int i = I; i < J; i++) {
+        sum += 0.5*(std::norm(Psi[i]) + std::norm(Psi[i+1]));
     }
     return sum;
 }
 
 // TODO calculer l'energie
-double E(vec_cmplx Psi){
-
-    return 0;
+double E(vec_cmplx const& Psi, vec_cmplx const& H_up, vec_cmplx const& H_down, vec_cmplx const& H_diag, double const& dx)
+{
+    double E = 0;
+    for (int i = 0; i < Psi.size(); ++i) {
+        E += (conj(Psi[i])*H_diag[i]*Psi[i]).real();
+        if (i > 0) { E += (std::conj(Psi[i])*H_up[i-1]*Psi[i-1]).real() + (std::conj(Psi[i])*H_up[i]*Psi[i]).real(); }
+        if (i < Psi.size() - 1) { E += (std::conj(Psi[i+1])*H_diag[i+1]*Psi[i+1]).real() + (std::conj(Psi[i])*H_down[i+1]*Psi[i]).real(); }
+        if (i < Psi.size() - 2) { E += (std::conj(Psi[i+1])*H_down[i+2]*Psi[i+1]).real(); }
+    }
+    E *= dx/2.0;
+    return E; //norm E ???
 }
 
 // TODO calculer xmoyenne
-double xmoy()
+double xmoy(vec_cmplx const& Psi, vector<double> const& x_, double const& dx)
 {
-    return 0;
+    double x_mean = 0;
+    for (int i = 0; i < Psi.size(); ++i) {
+        x_mean += (std::conj(Psi[i])*x_[i]*Psi[i]).real() + (std::conj(Psi[i+1])*x_[i+1]*Psi[i+1]).real();
+    }
+    return dx*x_mean/2.;
 }
 
 // TODO calculer x.^2 moyenne
-double x2moy()
+double x2moy(vec_cmplx const& Psi, vector<double> const& x_, double const& dx)
 {
-    return 0;
+    double x2_mean = 0;
+    for (int i = 0; i < Psi.size(); ++i) {
+        x2_mean += (std::conj(Psi[i])*x_[i]*x_[i]*Psi[i]).real() + (std::conj(Psi[i+1])*x_[i+1]*x_[i+1]*Psi[i+1]).real();
+    }
+    return dx*x2_mean/2.;
 }
 
 // TODO calculer p moyenne
-double pmoy()
+double pmoy(vec_cmplx const& Psi, double const& dx)
 {
-    return 0;
+    double p_mean = 0;
+    complex<double> complex_i = complex<double>(0, 1);
+
+    vec_cmplx der_Psi(Psi.size(), 0.);
+
+    der_Psi[0] = Psi[1]/dx;
+    for (int i = 1; i < Psi.size() - 2; ++i) {
+        der_Psi[i] = (Psi[i+1] - Psi[i - 1])/(2.*dx);
+    }
+    der_Psi[Psi.size() - 1] = Psi[Psi.size()-2]/dx;
+
+    for (int i = 1; i < Psi.size() - 1; ++i) {
+        p_mean += (std::conj(Psi[i])*der_Psi[i]).real() + (std::conj(Psi[i+1])*der_Psi[i+1]).real();
+    }
+    return (dx*complex_i*p_mean).real()/2.;
 }
 
 // TODO calculer p.^2 moyenne
-double p2moy(double h, vector <double> Psi, vector <double> upper_, vector <double> diag_)
+double p2moy(vec_cmplx const& Psi, double const& dx)
 {
     double sum = 0;
-    int N = Psi.size();
-    for (int i = 0; i < N - 1; ++i) {
-        double p_term_i = -1/h*(Psi[i -1] - 2*Psi[i] + Psi[i+1]);
-        double p_term_i_next = -1/h*(Psi[i] - 2*Psi[i + 1] + Psi[i+2]);
-        sum = Psi[i]*p_term_i + Psi[i+1]*p_term_i_next;
+    vec_cmplx der_2Psi(Psi.size(), 0.);
+    for (int i = 1; i < Psi.size() - 2; ++i) {
+        der_2Psi[i] = (Psi[i+1] - Psi[i] - Psi[i] + Psi[i-1])/(dx*dx);
     }
-    return 0.5*sum;
+    for (int i = 0; i < Psi.size() - 1; ++i) {
+        sum += (std::conj(Psi[i])*der_2Psi[i]).real() + (std::conj(Psi[i+1])*der_2Psi[i+1]).real();
+    }
+    return -dx*sum/2.;
 }
 
 // TODO calculer la normalization
 vec_cmplx normalize(vec_cmplx const& Psi, double const& dx)
 {
-    vec_cmplx psi_norm(psi.size(), 0.);
-    int N = Psi.size();
+    vec_cmplx psi_norm(Psi.size(), 0.);
     double sum = 0.;
-    for (int i = 0; i < N - 1; ++i) {
-        sum += std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1];
+    for (int i = 0; i < Psi.size() - 1; ++i) {
+        sum += (std::conj(Psi[i])*Psi[i]).real() + (std::conj(Psi[i+1])*Psi[i+1]).real();
     }
     sum *= dx/2;
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < Psi.size(); ++i) {
         psi_norm[i] = Psi[i]/std::sqrt(sum);
     }
     return psi_norm;
@@ -124,8 +155,7 @@ vec_cmplx normalize(vec_cmplx const& Psi, double const& dx)
 
 
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     complex<double> complex_i = complex<double>(0, 1); // Nombre imaginaire i
     const double PI = 3.1415926535897932384626433832795028841971e0;
@@ -164,7 +194,7 @@ main(int argc, char** argv)
     int Nintervals = configFile.get<int>("Nintervals");
 
     // TODO: initialiser le paquet d'onde, equation (4.116) du cours
-    double k0 = 2*PI*n/L;
+    double k0 = 2*PI*n/(xR - xL);
 
     int Npoints = Nintervals + 1;
     double dx = (xR - xL) / Nintervals;
@@ -210,10 +240,10 @@ main(int argc, char** argv)
     // supérieures et inférieures
     for (int i(0); i < Npoints; ++i) // Boucle sur les points de maillage
     {
-        V_i = V(V0, x[i], xL, xR, xa, xb, om0);
+        double V_i = V(V0, x[i], xL, xR, xa, xb, om0);
         dH[i] = -hbar*hbar/(4*dx*dx) + V_i;
-        dA[i] = 1 + 2*a + b*V_i;
-        dB[i] = 1 + 2*a + b*V_i;
+        dA[i] = 1. + 2.*a + b*V_i;
+        dB[i] = 1. + 2.*a + b*V_i;
     }
     for (int i(0); i < Nintervals; ++i) // Boucle sur les intervalles
     {
@@ -242,7 +272,7 @@ main(int argc, char** argv)
     ofstream fichier_potentiel((output + "_pot.out").c_str());
     fichier_potentiel.precision(15);
     for (int i(0); i < Npoints; ++i)
-        fichier_potentiel << x[i] << " " <<V() << endl;
+        fichier_potentiel << x[i] << " " <<V(V0, x[i], xL, xR, xa, xb, om0) << endl;
     fichier_potentiel.close();
 
     ofstream fichier_psi((output + "_psi2.out").c_str());
@@ -260,17 +290,25 @@ main(int argc, char** argv)
     // Ecriture des observables :
     // TODO: introduire les arguments des fonctions prob, E, xmoy, x2moy, pmoy et p2moy
     //       en accord avec la façon dont vous les aurez programmés plus haut
-    fichier_observables << t << " " << prob() << " " << prob()
-                << " " << E() << " " << xmoy () << " "  
-                << x2moy() << " " << pmoy () << " " << p2moy() << endl; 
-
+    double target = 0;
+    double epsilon = 0.01;
+    auto it = find_if(x.begin(), x.end(), [=](double b) {
+        return std::abs(target - b) < epsilon;
+    });
+    if (it == x.end()) { cerr << "Lower tolerance !!" << endl;}
+    else {
+    fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
+                << " " << E(psi, cH, dH, aH, dx) << " " << xmoy (psi, x, dx) << " "
+                << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
+    }
     // Boucle temporelle :    
     while (t < tfin) {
 
         // Multiplication psi_tmp = B * psi :
         vec_cmplx psi_tmp(Npoints, 0.);
-        for (int i(0); i < Npoints; ++i)
+        for (int i(0); i < Npoints; ++i) {
             psi_tmp[i] = dB[i] * psi[i];
+        }
         for (int i(0); i < Nintervals; ++i) {
             psi_tmp[i] += cB[i] * psi[i + 1];
             psi_tmp[i + 1] += aB[i] * psi[i];
@@ -289,9 +327,9 @@ main(int argc, char** argv)
         // Ecriture des observables :
 	// TODO: introduire les arguments des fonctions prob, E, xmoy, x2moy, pmoy et p2moy
 	//       en accord avec la façon dont vous les aurez programmés plus haut
-        fichier_observables << t << " " << prob() << " " << prob()
-                    << " " << E() << " " << xmoy () << " "  
-                    << x2moy() << " " << pmoy () << " " << p2moy() << endl; 
+        fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
+                            << " " << E(psi, cH, dH, aH, dx) << " " << xmoy (psi, x, dx) << " "
+                            << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
 
     } // Fin de la boucle temporelle
 
