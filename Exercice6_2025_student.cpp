@@ -44,7 +44,10 @@ double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, 
 {
     double V_(0);
     if (x_ >= xL_ && x_ < xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xa_)/(1 - xa_/xL_), 2); }
-    else if (x_ >=  xa_ && x_ <= xb_) { V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2); }
+    else if (x_ >=  xa_ && x_ <= xb_) {
+        if (xb_ - xa_ != 0){ V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2);}
+        else {V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)), 2); }
+    }
     else if (x_ > xb_ && x_ <= xR_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xb_)/(1 - xb_/xR_), 2); }
     else { cerr << "Choisir une position valide !" << endl;}
     return V_;
@@ -213,9 +216,10 @@ int main(int argc, char** argv)
 
     // Maillage :
     vector<double> x(Npoints);
-    for (int i(0); i < Npoints; ++i)
+    for (int i(0); i < Npoints; ++i) {
         x[i] = xL + i * dx;
-
+        cout << " i = " << i << " x[i] = " << x[i] << endl;
+    }
     // Initialisation de la fonction d'onde :
     vec_cmplx psi(Npoints, 0.);
 
@@ -246,7 +250,9 @@ int main(int argc, char** argv)
       cB(Nintervals); // matrice du membre de droite de l'equation (4.100)
 
     complex<double> a = complex_i * hbar * dt / (4.*m*dx*dx); // Coefficient complexe a de l'equation (4.100)
+    cout << " a = " << a << endl;
     complex<double> b = complex_i * dt / (2.*hbar); // Coefficient complexe a de l'equation (4.100)
+    cout << " b = " << b << endl;
     complex<double> complex_1 = complex<double>(1., 0);
     // TODO: calculer les éléments des matrices A, B et H.
     // Ces matrices sont stockées sous forme tridiagonale, d:diagonale, c et a: diagonales
@@ -254,6 +260,7 @@ int main(int argc, char** argv)
     for (int i(0); i < Npoints; ++i) // Boucle sur les points de maillage
     {
         double V_i = V(V0, x[i], xL, xR, xa, xb, om0);
+        cout << " V[i] = " << V_i << endl;
         dH[i] = hbar*hbar/(m*dx*dx) + V_i;
         dA[i] = complex_1 + 2.*a + b*V_i;
         dB[i] = complex_1 - 2.*a - b*V_i;
@@ -278,6 +285,12 @@ int main(int argc, char** argv)
     aB[Nintervals-1] = 0;
     cA[Nintervals-1] = 0;
     cB[Nintervals-1] = 0;
+
+
+    for (int i(0); i < Npoints; ++i) { cout << " i = " << i << " dH[i] = " << dH[i] << " dA[i] = " << dA[i] << " dB[i] = " << dB[i] << endl; }
+    for (int i(0); i < Nintervals; ++i) {
+        cout << " i = " << i << " aH[i] = " << aH[i] << " aA[i] = " << aA[i]  << " aB[i] = " << aB[i] << " cH[i] = " << cH[i] << " cA[i] = " << cA[i] << " cB[i] = " << cB[i] << endl;
+    }
 
     // Fichiers de sortie :
     string output = configFile.get<string>("output");
