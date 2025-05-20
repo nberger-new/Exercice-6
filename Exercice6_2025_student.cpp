@@ -44,15 +44,19 @@ double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, 
 {
     double V_(0);
     if (x_ >= xL_ && x_ < xa_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xa_)/(1 - xa_/xL_), 2); }
-    else if (x_ >=  xa_ && x_ <= xb_) { V_ = V0_*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2);
+    else if (x_ >=  xa_ && x_ <= xb_) {
+        if (xb_ - xa_ != 0){ V_ = V0_*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2); }
+        else { V_ = V0_*pow(std::sin(M_PI*(x_ - xa_)), 2); }
+        cout << "V_ = " << V_ << endl;
+
     }
     else if (x_ > xb_ && x_ <= xR_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xb_)/(1 - xb_/xR_), 2); }
     else { cerr << "Choisir une position valide !" << endl;}
     return V_;
 }
 
-// if (xb_ - xa_ != 0){ V_ = V0*0.5*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2);}
-// else {V_ = 0.5*pow(std::sin(M_PI*(x_ - xa_)), 2); }
+// if (xb_ - xa_ != 0){ V_ = V0*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2);}
+// else {V_ = V0_*pow(std::sin(M_PI*(x_ - xa_)), 2); }
 
 // Declaration des diagnostiques de la particule d'apres sa fonction d'onde psi :
 //  - prob: calcule la probabilite de trouver la particule dans un intervalle [x_i, x_j]
@@ -268,10 +272,10 @@ int main(int argc, char** argv)
     }
     for (int i(0); i < Nintervals; ++i) // Boucle sur les intervalles
     {
-        aH[i] = -hbar*hbar/(2*m*dx*dx);
+        aH[i] = -hbar*hbar/(2.*m*dx*dx);
         aA[i] = -a;
         aB[i] = a;
-        cH[i] = -hbar*hbar/(2*m*dx*dx);
+        cH[i] = -hbar*hbar/(2.*m*dx*dx);
         cA[i] = -a;
         cB[i] = a;
     }
