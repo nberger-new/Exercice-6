@@ -115,10 +115,15 @@ else :
 
       V = data_pot[:, 1]
       xs = data_pot[:, 0]
+
       ts = data_obs[:, 0]
-      x_mean = data_obs[:, 4]
-      p_mean = data_obs[:, 6]
+      p_infs = data_obs[:, 1]
+      p_sups = data_obs[:, 2]
       E = data_obs[:, 3]
+      x_mean = data_obs[:, 4]
+      x2_mean = data_obs[:, 5]
+      p_mean = data_obs[:, 6]
+      p2_mean = data_obs[:, 7]
 
       delta_xs = data_inc[:, 1]
       delta_ps = data_inc[:, 2]
@@ -126,19 +131,23 @@ else :
     except :
       print('Could not open the desired files : make sure they exist !')
 
-    if one :
-      fig, ax1 = plt.subplots(constrained_layout=True)
-      ax1.plot(xs, psi_abs[0, :], marker = 'd', color='royalblue', mfc='white', label=rf'$|\Psi(0, x)|$, n$_x$ = {Nintervals[j]}')
-      ax1.plot(xs, psi_real[0, :], marker = 'd', color='limegreen', mfc='white', label=rf'Re($\Psi(0, x)$), n$_x$ = {Nintervals[j]}')
-      ax1.plot(xs, psi_im[0, :], marker = 'd', color='deeppink', mfc='white', label=rf'Im($\Psi(0, x)$), n$_x$ = {Nintervals[j]}')
-      ax1.set_xlabel(r'x [m]', fontsize=fs)
-      ax1.set_ylabel(r"Fonction d'onde [m]", fontsize=fs)
-      ax1.tick_params(axis="both", labelsize=fs)
-      ax1.legend(fontsize=fs)
-      ax1.grid(True)
+    hbar = 1.0546e-34
 
-      surface = True
-      comparison = False
+    if one :
+      initial = False
+      surface = False
+      comparison = True
+
+      if initial :
+        fig, ax1 = plt.subplots(constrained_layout=True)
+        ax1.plot(xs, psi_abs[0, :], marker = 'd', color='royalblue', mfc='white', label=rf'$|\Psi(0, x)|$, n$_x$ = {Nintervals[j]}')
+        ax1.plot(xs, psi_real[0, :], marker = 'd', color='limegreen', mfc='white', label=rf'Re($\Psi(0, x)$), n$_x$ = {Nintervals[j]}')
+        ax1.plot(xs, psi_im[0, :], marker = 'd', color='deeppink', mfc='white', label=rf'Im($\Psi(0, x)$), n$_x$ = {Nintervals[j]}')
+        ax1.set_xlabel(r'x [m]', fontsize=fs)
+        ax1.set_ylabel(r"Fonction d'onde [m]", fontsize=fs)
+        ax1.tick_params(axis="both", labelsize=fs)
+        ax1.legend(fontsize=fs)
+        ax1.grid(True)
 
       if surface :
       #Surface plot as a function of (x, t)
@@ -148,49 +157,51 @@ else :
         fig, ax2 = plt.subplots(constrained_layout=True)
         pcm = ax2.pcolormesh(XX, TT, psi_abs, shading='auto', cmap='plasma')
         cbar = plt.colorbar(pcm, ax=ax2)
-        cbar.set_label(r"$|\Psi\,$(x, t)|", fontsize=fs)
-        ax2.set_xlabel("Position x", fontsize=fs)
-        ax2.set_ylabel(r"t/v$_0$", fontsize=fs)
+        cbar.set_label(r"$|\Psi\,$(x, t)| [u]", fontsize=fs)
+        ax2.set_xlabel("Position x [u]", fontsize=fs)
+        ax2.set_ylabel(r"t/v$_0$ [u]", fontsize=fs)
 
         fig, ax3 = plt.subplots(constrained_layout=True)
-        pcm = ax3.pcolormesh(XX, TT, psi_real, shading='auto', cmap='plasma')
+        pcm = ax3.pcolormesh(XX, TT, psi_real, shading='auto', cmap='PuOr')
         cbar = plt.colorbar(pcm, ax=ax3)
-        cbar.set_label(r"Re($\Psi\,$(x, t))", fontsize=fs)
-        ax3.set_xlabel("Position x", fontsize=fs)
-        ax3.set_ylabel(r"t/v$_0$", fontsize=fs)
+        cbar.set_label(r"Re($\Psi\,$(x, t)) [u]", fontsize=fs)
+        ax3.set_xlabel("Position x [u]", fontsize=fs)
+        ax3.set_ylabel(r"t/v$_0$ [u]", fontsize=fs)
 
       if comparison :
         def x_th(ts_, m, x0_, omega0, p0_) :
           th = [x0_*np.cos(omega0*t) + p0_*np.sin(omega0*t)/(m*omega0) for t in ts_]
+          return th
 
         def p_th(ts_, m, x0_, omega0, p0_) :
-          th = [-m*x0_*omega0*np.sin(omega0*t) + p0*np.cos(omega0*t) for t in ts_]
+          th = [-m*x0_*omega0*np.sin(omega0*t) + p0_*np.cos(omega0*t) for t in ts_]
+          return th
 
         x0 = -0.5
         om0 = 100
-        p0 = 0
+        p0 = p_mean[0]
         m = 1
 
         p_ths = p_th(ts, m, x0, om0, p0)
         x_ths = x_th(ts, m, x0, om0, p0)
 
         fig, ax4 = plt.subplots(constrained_layout=True)
-        ax3.plot(ts, x_mean, marker = 'o', color='royalblue', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
-        ax3.plot(ts, x_ths, marker = 'o', color='deeppink', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
-        ax3.set_xlabel(r't [s]', fontsize=fs)
-        ax3.set_ylabel(r"Hamiltonien [J]", fontsize=fs)
-        ax3.tick_params(axis="both", labelsize=fs)
-        ax3.legend(fontsize=fs)
-        ax3.grid(True)
+        ax4.plot(ts, x_mean, marker = 'o', color='limegreen', mfc='white', label=r'$\langle x \rangle (t)$')
+        ax4.plot(ts, x_ths, marker = 'o', color='deeppink', mfc='white', label=r'$x_{class}$(t)')
+        ax4.set_xlabel(r't [s]', fontsize=fs)
+        ax4.set_ylabel(r"Position [u]", fontsize=fs)
+        ax4.tick_params(axis="both", labelsize=fs)
+        ax4.legend(fontsize=fs)
+        ax4.grid(True)
 
-        fig, ax3 = plt.subplots(constrained_layout=True)
-        ax3.plot(ts, p_mean, marker = 'o', color='royalblue', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
-        ax3.plot(ts, p_ths, marker = 'o', color='deeppink', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
-        ax3.set_xlabel(r't [s]', fontsize=fs)
-        ax3.set_ylabel(r"Hamiltonien [J]", fontsize=fs)
-        ax3.tick_params(axis="both", labelsize=fs)
-        ax3.legend(fontsize=fs)
-        ax3.grid(True)
+        fig, ax5 = plt.subplots(constrained_layout=True)
+        ax5.plot(ts, p_mean, marker = 'o', color='limegreen', mfc='white', label=r'$\langle p \rangle (t)$')
+        ax5.plot(ts, p_ths, marker = 'o', color='deeppink', mfc='white', label=r'$p_{class}$(t)')
+        ax5.set_xlabel(r't [s]', fontsize=fs)
+        ax5.set_ylabel(r"Quantité de mouvement [kg$\cdot$u$\cdot$s$^{-1}$]", fontsize=fs)
+        ax5.tick_params(axis="both", labelsize=fs)
+        ax5.legend(fontsize=fs)
+        ax5.grid(True)
 
     if two :
       #Probabilite totale reste toujours egale a 1
@@ -199,19 +210,43 @@ else :
       energy = True
       uncert = True
       if proba :
-        print('hi')
+        p_tot = [p_inf + p_sup for p_inf, p_sup in zip(p_infs, p_sups)]
+        fig, ax9 = plt.subplots(constrained_layout=True)
+        ax9.plot(ts, p_tot, marker = 'o', color='darkorange', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
+        ax9.set_xlabel(r't [s]', fontsize=fs)
+        ax9.set_ylabel(r"Probabilité totale $P_{tot}$", fontsize=fs)
+        ax9.tick_params(axis="both", labelsize=fs)
+        ax9.legend(fontsize=fs)
+        ax9.grid(True)
+
       if energy :
-        fig, ax3 = plt.subplots(constrained_layout=True)
-        ax3.plot(ts, E, marker = 'o', color='royalblue', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
-        ax3.set_xlabel(r't [s]', fontsize=fs)
-        ax3.set_ylabel(r"Hamiltonien [J]", fontsize=fs)
-        ax3.tick_params(axis="both", labelsize=fs)
-        ax3.legend(fontsize=fs)
-        ax3.grid(True)
+        fig, ax6 = plt.subplots(constrained_layout=True)
+        ax6.plot(ts, E, marker = 'o', color='royalblue', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
+        ax6.set_xlabel(r't [s]', fontsize=fs)
+        ax6.set_ylabel(r"Hamiltonien [J]", fontsize=fs)
+        ax6.tick_params(axis="both", labelsize=fs)
+        ax6.legend(fontsize=fs)
+        ax6.grid(True)
 
       if uncert:
-        inc_prod = []
+        # inc_xs = [np.sqrt(x2_mean_ - x_mean_**2) for x2_mean_, x_mean_ in zip(x2_mean, x_mean)]
+        # inc_ps = [np.sqrt(p2_mean_ - p_mean_**2) for p2_mean_, p_mean_ in zip(p2_mean, p_mean)]
+        # res_x = delta_xs == inc_xs
+        # res_p = delta_ps == inc_ps
+        # print(f'Res x = {res_x}, Res p = {res_p}')
+        # inc_prod = [delta_x*delta_p for delta_x, delta_p in zip(inc_xs, inc_ps)]
 
+        delta_prod = [delta_x*delta_p for delta_x, delta_p in zip(delta_xs, delta_ps)]
+
+        fig, ax7 = plt.subplots(constrained_layout=True)
+        ax7.plot(ts, delta_prod, marker = 'o', color='royalblue', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
+        # ax7.plot(ts, inc_prod, marker = 'o', color='deeppink', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
+        ax7.axhline(y=hbar/2, color='black', linestyle = '--', label=r'$\frac{\hbar}{2}$')
+        ax7.set_xlabel(r't [s]', fontsize=fs)
+        ax7.set_ylabel(r"$\langle \Delta x \rangle(t) \langle \Delta p \rangle(t)$", fontsize=fs)
+        ax7.tick_params(axis="both", labelsize=fs)
+        ax7.legend(fontsize=fs, loc='lower left')
+        ax7.grid(True)
 
 
 plt.show()
