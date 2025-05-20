@@ -135,9 +135,10 @@ double pmoy(vec_cmplx const& Psi, double const& dx)
     der_Psi[Psi.size() - 1] = Psi[Psi.size()-2]/dx;
 
     for (int i = 1; i < Psi.size() - 1; ++i) {
-        p_mean += std::real(std::conj(Psi[i])*der_Psi[i] + std::conj(Psi[i+1])*der_Psi[i+1]);
+        p_mean += std::real(-complex_i*(std::conj(Psi[i])*der_Psi[i] + std::conj(Psi[i+1])*der_Psi[i+1]));
     }
-    return std::real(dx*complex_i*p_mean/2.);
+    //cout << "p_mean = " << p_mean << endl;
+    return std::real(dx*p_mean/2.);
 }
 
 // TODO calculer p.^2 moyenne
