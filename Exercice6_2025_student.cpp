@@ -47,7 +47,7 @@ double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, 
     else if (x_ >=  xa_ && x_ <= xb_) {
         if (xb_ - xa_ != 0){ V_ = V0_*pow(std::sin(M_PI*(x_ - xa_)/(xb_ - xa_)), 2); }
         else { V_ = V0_*pow(std::sin(M_PI*(x_ - xa_)), 2); }
-        cout << "V_ = " << V_ << endl;
+        //cout << "V_ = " << V_ << endl;
 
     }
     else if (x_ > xb_ && x_ <= xR_) { V_ = 0.5*pow(omega_0, 2)*pow((x_-xb_)/(1 - xb_/xR_), 2); }
@@ -82,15 +82,18 @@ double E(vec_cmplx const& Psi, vec_cmplx const& H_up, vec_cmplx const& H_down, v
 {
     double E = 0;
     vec_cmplx HPsi(Psi.size(), 0.0);
-    for (int i = 0; i < Psi.size(); ++i) {
+    for (int i = 1; i < Psi.size()-1; ++i) {
         HPsi[i] += H_diag[i]*Psi[i];
-        if (i > 0) { HPsi[i] += H_down[i-1]*Psi[i-1]; }
-        if (i < Psi.size() - 1) { HPsi[i] += H_up[i+1]*Psi[i+1]; }
+        HPsi[i] += H_up[i]*Psi[i+1];
+        HPsi[i+1] += H_down[i]*Psi[i];
+        //if (i > 0) { HPsi[i] += H_down[i-1]*Psi[i-1]; }
+        //HPsi[i] += H_up[i+1]*Psi[i+1];
     }
+    HPsi[Psi.size()-1] = 0.0;
     for (int i = 0; i < Psi.size()-1; ++i) {
-        E += std::real(std::conj(Psi[i])*HPsi[i] + std::conj(Psi[i+1])*HPsi[i+1]);
+        E += std::real(std::conj(Psi[i])*HPsi[i]) + std::real(std::conj(Psi[i+1])*HPsi[i+1]);
     }
-    E *= dx/2.0;
+    E *= dx/(2.);
     return E;
 }
 
@@ -333,7 +336,7 @@ int main(int argc, char** argv)
     if (it == x.end()) { cerr << "Lower tolerance !!" << endl;}
     else {
     fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
-                << " " << E(psi, cH, dH, aH, dx) << " " << xmoy (psi, x, dx) << " "
+                << " " << E(psi, cH, aH, dH, dx) << " " << xmoy (psi, x, dx) << " "
                 << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
     }
 
@@ -369,7 +372,7 @@ int main(int argc, char** argv)
 	// TODO: introduire les arguments des fonctions prob, E, xmoy, x2moy, pmoy et p2moy
 	//       en accord avec la façon dont vous les aurez programmés plus haut
         fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
-                            << " " << E(psi, cH, dH, aH, dx) << " " << xmoy (psi, x, dx) << " "
+                            << " " << E(psi, cH, aH, dH, dx) << " " << xmoy (psi, x, dx) << " "
                             << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
 
         double delta_mean_x = std::sqrt(x2moy(psi, x, dx) - pow(xmoy (psi, x, dx), 2));
