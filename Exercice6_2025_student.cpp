@@ -68,11 +68,12 @@ double V(double V0_, double x_, double xL_, double xR_, double xa_, double xb_, 
 
 
 // TODO: calculer la probabilite de trouver la particule dans un intervalle [x_i, x_j]
-double prob(int I, int J, vec_cmplx const& Psi)
+double prob(int I, int J, vec_cmplx const& Psi, double const& dx)
 {
     double sum  = 0;
     for (int i = I; i < J; i++) {
-        sum += 0.5*(std::norm(Psi[i]) + std::norm(Psi[i+1]));
+        //cout << std::norm(Psi[i]*conj(Psi[i])) << endl;
+        sum += 0.5*dx*(std::norm(Psi[i]) + std::norm(Psi[i+1]));
     }
     return sum;
 }
@@ -164,12 +165,18 @@ vec_cmplx normalize(vec_cmplx const& Psi, double const& dx)
     vec_cmplx psi_norm(Psi.size(), 0.);
     double sum = 0.;
     for (int i = 0; i < Psi.size() - 1; ++i) {
-        sum += std::real(std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1]);
+        //cout << std::real(std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1]) << " =? " << std::real(norm(Psi[i]) + norm(Psi[i+1])) << endl;
+        sum += 0.5*dx*std::real(std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1]);
     }
-    sum *= dx/2;
     for (int i = 0; i < Psi.size(); ++i) {
         psi_norm[i] = Psi[i]/std::sqrt(sum);
     }
+    // sum = 0.;
+    // for (int i = 0; i < Psi.size() - 1; ++i) {
+    //     //cout << std::real(std::conj(Psi[i])*Psi[i] + std::conj(Psi[i+1])*Psi[i+1]) << " =? " << std::real(norm(Psi[i]) + norm(Psi[i+1])) << endl;
+    //     sum += 0.5*dx*std::real(std::norm(psi_norm[i]) + std::norm(psi_norm[i+1]));
+    //     cout << "sum = " << sum << endl;
+    // }
     return psi_norm;
 }
 
@@ -335,7 +342,7 @@ int main(int argc, char** argv)
     });
     if (it == x.end()) { cerr << "Lower tolerance !!" << endl;}
     else {
-    fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
+    fichier_observables << t << " " << prob(0, it - x.begin(), psi, dx) << " " << prob(it - x.begin(), psi.size()-1, psi, dx)
                 << " " << E(psi, cH, aH, dH, dx) << " " << xmoy (psi, x, dx) << " "
                 << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
     }
@@ -371,7 +378,7 @@ int main(int argc, char** argv)
         // Ecriture des observables :
 	// TODO: introduire les arguments des fonctions prob, E, xmoy, x2moy, pmoy et p2moy
 	//       en accord avec la façon dont vous les aurez programmés plus haut
-        fichier_observables << t << " " << prob(0, it - x.begin(), psi) << " " << prob(it - x.begin(), psi.size()-1, psi)
+        fichier_observables << t << " " << prob(0, it - x.begin(), psi, dx) << " " << prob(it - x.begin(), psi.size()-1, psi, dx)
                             << " " << E(psi, cH, aH, dH, dx) << " " << xmoy (psi, x, dx) << " "
                             << x2moy(psi, x, dx) << " " << pmoy (psi, dx) << " " << p2moy(psi, dx) << endl;
 
