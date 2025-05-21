@@ -22,10 +22,11 @@ os.chdir(repertoire)
 
 input_filename = 'configuration.in.example'  # Nome del file di input
 
-one = True
+one = False
 two = False
-three = False
+three = True
 init = False
+evolution = False
 
 fs = 15
 
@@ -36,7 +37,7 @@ if init :
   xa = [0, -0.5, -0.5, -0.5]
   xb = [0, 0.5, 0.5, 0.5]
 
-if one or two :
+if one or two or evolution :
   Nsteps = [800]
   Nintervals = [512]
 
@@ -44,9 +45,9 @@ elif three :
   time = True
   if time :
     Nintervals = [512]
-    Nsteps = [100, 200, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000]
+    Nsteps = [200, 300, 400, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000]
   else :
-    Nintervals = [10, 50, 100, 150, 300, 500, 1000, 1500, 3000, 5000, 10000]
+    Nintervals = [10, 50, 100, 150, 300, 500, 1000, 3000, 10000]
     Nsteps = [800]
 
 # Simulations
@@ -96,6 +97,8 @@ if init :
     ax0.grid(True)
 
 else :
+  err = []
+  step = []
   for (i, j), output_base in outputs.items() :
     print(output_base)
     obs_file = f'{output_base}_obs.out'
@@ -133,10 +136,26 @@ else :
 
     hbar = 1.0546e-34
 
+    def x_th(ts_, m, x0_, omega0, p0_) :
+      th = [x0_*np.cos(omega0*t) + p0_*np.sin(omega0*t)/(m*omega0) for t in ts_]
+      return th
+
+    def p_th(ts_, m, x0_, omega0, p0_) :
+      th = [-m*x0_*omega0*np.sin(omega0*t) + p0_*np.cos(omega0*t) for t in ts_]
+      return th
+
+    x0 = -0.5
+    om0 = 100
+    p0 = p_mean[0]
+    m = 1
+
+    p_ths = p_th(ts, m, x0, om0, p0)
+    x_ths = x_th(ts, m, x0, om0, p0)
+
     if one :
       initial = False
-      surface = False
-      comparison = True
+      surface = True
+      comparison = False
 
       if initial :
         fig, ax1 = plt.subplots(constrained_layout=True)
@@ -157,39 +176,23 @@ else :
         fig, ax2 = plt.subplots(constrained_layout=True)
         pcm = ax2.pcolormesh(XX, TT, psi_abs, shading='auto', cmap='plasma')
         cbar = plt.colorbar(pcm, ax=ax2)
-        cbar.set_label(r"$|\Psi\,$(x, t)| [u]", fontsize=fs)
-        ax2.set_xlabel("Position x [u]", fontsize=fs)
-        ax2.set_ylabel(r"t/v$_0$ [u]", fontsize=fs)
+        cbar.set_label(r"$|\Psi\,$(x, t)| [m]", fontsize=fs)
+        ax2.set_xlabel("Position x [m]", fontsize=fs)
+        ax2.set_ylabel(r"t/v$_0$ [m]", fontsize=fs)
 
         fig, ax3 = plt.subplots(constrained_layout=True)
-        pcm = ax3.pcolormesh(XX, TT, psi_real, shading='auto', cmap='PuOr')
+        pcm = ax3.pcolormesh(XX, TT, psi_im, shading='auto', cmap='PuOr')
         cbar = plt.colorbar(pcm, ax=ax3)
-        cbar.set_label(r"Re($\Psi\,$(x, t)) [u]", fontsize=fs)
-        ax3.set_xlabel("Position x [u]", fontsize=fs)
-        ax3.set_ylabel(r"t/v$_0$ [u]", fontsize=fs)
+        cbar.set_label(r"Re($\Psi\,$(x, t)) [m]", fontsize=fs)
+        ax3.set_xlabel("Position x [m]", fontsize=fs)
+        ax3.set_ylabel(r"t/v$_0$ [m]", fontsize=fs)
 
       if comparison :
-        def x_th(ts_, m, x0_, omega0, p0_) :
-          th = [x0_*np.cos(omega0*t) + p0_*np.sin(omega0*t)/(m*omega0) for t in ts_]
-          return th
-
-        def p_th(ts_, m, x0_, omega0, p0_) :
-          th = [-m*x0_*omega0*np.sin(omega0*t) + p0_*np.cos(omega0*t) for t in ts_]
-          return th
-
-        x0 = -0.5
-        om0 = 100
-        p0 = p_mean[0]
-        m = 1
-
-        p_ths = p_th(ts, m, x0, om0, p0)
-        x_ths = x_th(ts, m, x0, om0, p0)
-
         fig, ax4 = plt.subplots(constrained_layout=True)
         ax4.plot(ts, x_mean, marker = 'o', color='limegreen', mfc='white', label=r'$\langle x \rangle (t)$')
         ax4.plot(ts, x_ths, marker = 'o', color='deeppink', mfc='white', label=r'$x_{class}$(t)')
         ax4.set_xlabel(r't [s]', fontsize=fs)
-        ax4.set_ylabel(r"Position [u]", fontsize=fs)
+        ax4.set_ylabel(r"Position [m]", fontsize=fs)
         ax4.tick_params(axis="both", labelsize=fs)
         ax4.legend(fontsize=fs)
         ax4.grid(True)
@@ -208,20 +211,21 @@ else :
       proba = False
       #Enegie reste constante
       energy = True
-      uncert = True
+      uncert = False
       if proba :
         p_tot = [p_inf + p_sup for p_inf, p_sup in zip(p_infs, p_sups)]
         fig, ax9 = plt.subplots(constrained_layout=True)
-        ax9.plot(ts, p_tot, marker = 'o', color='darkorange', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
+        ax9.plot(ts, p_tot, marker = 'o', color='darkorange', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
         ax9.set_xlabel(r't [s]', fontsize=fs)
         ax9.set_ylabel(r"Probabilité totale $P_{tot}$", fontsize=fs)
         ax9.tick_params(axis="both", labelsize=fs)
+        ax9.set_ylim(255.999999999994, 256.000000000001)
         ax9.legend(fontsize=fs)
         ax9.grid(True)
 
       if energy :
         fig, ax6 = plt.subplots(constrained_layout=True)
-        ax6.plot(ts, E, marker = 'o', color='royalblue', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
+        ax6.plot(ts, E, marker = 'o', color='limegreen', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
         ax6.set_xlabel(r't [s]', fontsize=fs)
         ax6.set_ylabel(r"Hamiltonien [J]", fontsize=fs)
         ax6.tick_params(axis="both", labelsize=fs)
@@ -239,7 +243,7 @@ else :
         delta_prod = [delta_x*delta_p for delta_x, delta_p in zip(delta_xs, delta_ps)]
 
         fig, ax7 = plt.subplots(constrained_layout=True)
-        ax7.plot(ts, delta_prod, marker = 'o', color='royalblue', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
+        ax7.plot(ts, delta_prod, marker = 'o', color='deeppink', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
         # ax7.plot(ts, inc_prod, marker = 'o', color='deeppink', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
         ax7.axhline(y=hbar/2, color='black', linestyle = '--', label=r'$\frac{\hbar}{2}$')
         ax7.set_xlabel(r't [s]', fontsize=fs)
@@ -248,6 +252,81 @@ else :
         ax7.legend(fontsize=fs, loc='lower left')
         ax7.grid(True)
 
+    if three :
+      xth_fin = x_ths[-1]
+      xfin = x_mean[-1]
+      err.append(np.abs(xfin - xth_fin))
+      tfin = 0.08
+      L = 2
+
+      if time :
+        dt = tfin/Nsteps[i]
+        step.append(dt)
+
+      else :
+        dx = L/Nintervals[i]
+        step.append(dx)
+
+  if three :
+    lim_min = min(step)
+    lim_max = max(step)
+
+    def power_law(dt, a, C):
+        return C * dt**a
+
+    result, cov = curve_fit(power_law, step, err)
+
+    a, const = result
+
+    dtlim = np.linspace(lim_min, lim_max, 15)
+
+    log_fit = power_law(dtlim, a, const)
+
+    fig, ax11 = plt.subplots(constrained_layout=True)
+    fig, ax12 = plt.subplots(constrained_layout=True)
+    if time :
+      step2 = [dt**2 for dt in step]
+      ax12.plot(step2, err, marker='o', markeredgecolor='forestgreen', linestyle='--', color='white')
+      ax12.set_xlabel(rf'$dt^2$', fontsize=fs)
+      ax12.tick_params(axis="both", labelsize=fs)
+      #ax12.set_xlim(xmin=lim_min, xmax=lim_max)
+      #ax12.legend(fontsize=fs)
+      ax12.grid(True)
+      # ax11.loglog(step, err, marker='o', label=rf'$n_{{order}}$ = {np.abs(a):.2f}', markeredgecolor='forestgreen', linestyle='none', color='white')
+      # ax11.loglog(dtlim, log_fit, linestyle='--', color='forestgreen', label=r'$|\langle x \rangle - x_{class}|$')
+      # ax11.set_xlabel(rf'$dt$', fontsize=fs)
+    else :
+      ax11.loglog(step, err, marker='o', label=rf'$n_{{order}}$ = {np.abs(a):.2f}', markeredgecolor='purple', linestyle='none', color='white')
+      ax11.loglog(dtlim, log_fit, linestyle='--', color='purple', label=r'$|\langle x \rangle - x_{class}|$')
+      ax11.set_xlabel(rf'$dx$', fontsize=fs)
+    ax11.set_ylabel(r"$|\langle x \rangle - x_{class}|$ [m]", fontsize=fs)
+    ax11.tick_params(axis="both", labelsize=fs)
+    ax11.set_xlim(xmin=lim_min, xmax=lim_max)
+    ax11.legend(fontsize=fs)
+    ax11.grid(True)
+
+    if evolution :
+
+      nx = psi_abs.shape[1]
+
+      fig, ax5 = plt.subplots(constrained_layout=True)
+      line, = ax5.plot([], [])  # Initialize empty plot
+
+      ax5.set_xlim(xps[0], xps[-1])
+      ax5.set_ylim(np.min(psi_re), np.max(psi_re))  # Adjust based on full data range
+      ax5.set_xlabel("x")
+      ax5.set_ylabel(r"$\Psi(x, t)$")
+
+      i_s = np.linspace(0, len(ts) - 1, 200).astype(int)
+
+      for i in i_s:
+          ax5.set_title(f"F(x, t) at time t={ts[i]:.2f}")
+          line.set_data(xps, psi_abs[i, :])
+          line.set_data(xps, psi_re[i, :])
+          line.set_data(xps, psi_im[i, :])
+          plt.draw()
+          plt.pause(0.001)
+          time.sleep(0.1)
 
 plt.show()
 
