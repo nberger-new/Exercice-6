@@ -2,6 +2,7 @@ import numpy as np
 import subprocess
 import matplotlib.pyplot as plt
 from scipy import stats
+import matplotlib.ticker as ticker
 from scipy.integrate import trapezoid as tpz
 from scipy.optimize import curve_fit
 import pdb
@@ -22,9 +23,9 @@ os.chdir(repertoire)
 
 input_filename = 'configuration.in.example'  # Nome del file di input
 
-one = False
+one = True
 two = False
-three = True
+three = False
 init = False
 evolution = False
 
@@ -42,12 +43,12 @@ if one or two or evolution :
   Nintervals = [512]
 
 elif three :
-  time = True
+  time = False
   if time :
     Nintervals = [512]
-    Nsteps = [200, 300, 400, 500, 1000, 2000, 3000, 5000, 10000, 20000, 30000]
+    Nsteps = [300, 325, 350, 375, 400, 500, 600, 700, 800, 1000, 5000, 10000]
   else :
-    Nintervals = [10, 50, 100, 150, 300, 500, 1000, 3000, 10000]
+    Nintervals = [150, 170, 200, 250, 300, 400, 500, 600, 800, 1000, 2000]
     Nsteps = [800]
 
 # Simulations
@@ -147,6 +148,7 @@ else :
     x0 = -0.5
     om0 = 100
     p0 = p_mean[0]
+    print(p0)
     m = 1
 
     p_ths = p_th(ts, m, x0, om0, p0)
@@ -170,6 +172,7 @@ else :
 
       if surface :
       #Surface plot as a function of (x, t)
+        print(psi_im == psi_real)
 
         TT, XX = np.meshgrid(ts, xs, indexing='ij')  # TT, XX shape: (nt, nx)
 
@@ -181,11 +184,25 @@ else :
         ax2.set_ylabel(r"t/v$_0$ [m]", fontsize=fs)
 
         fig, ax3 = plt.subplots(constrained_layout=True)
-        pcm = ax3.pcolormesh(XX, TT, psi_im, shading='auto', cmap='PuOr')
+        pcm = ax3.pcolormesh(XX, TT, psi_real, shading='auto', cmap='PuOr')
         cbar = plt.colorbar(pcm, ax=ax3)
         cbar.set_label(r"Re($\Psi\,$(x, t)) [m]", fontsize=fs)
         ax3.set_xlabel("Position x [m]", fontsize=fs)
         ax3.set_ylabel(r"t/v$_0$ [m]", fontsize=fs)
+
+        fig, ax16 = plt.subplots(constrained_layout=True)
+        pcm = ax16.pcolormesh(XX, TT, psi_im, shading='auto', cmap='PuOr')
+        cbar = plt.colorbar(pcm, ax=ax16)
+        cbar.set_label(r"Im($\Psi\,$(x, t)) [m]", fontsize=fs)
+        ax16.set_xlabel("Position x [m]", fontsize=fs)
+        ax16.set_ylabel(r"t/v$_0$ [m]", fontsize=fs)
+
+        fig, ax17 = plt.subplots(constrained_layout=True)
+        pcm = ax17.pcolormesh(XX, TT, psi_im + psi_real, shading='auto', cmap='PuOr')
+        cbar = plt.colorbar(pcm, ax=ax17)
+        cbar.set_label(r"Re($\Psi\,$(x, t)) + Im($\Psi\,$(x, t)) [m]", fontsize=fs)
+        ax17.set_xlabel("Position x [m]", fontsize=fs)
+        ax17.set_ylabel(r"t/v$_0$ [m]", fontsize=fs)
 
       if comparison :
         fig, ax4 = plt.subplots(constrained_layout=True)
@@ -210,24 +227,24 @@ else :
       #Probabilite totale reste toujours egale a 1
       proba = False
       #Enegie reste constante
-      energy = True
-      uncert = False
+      energy = False
+      uncert = True
       if proba :
         p_tot = [p_inf + p_sup for p_inf, p_sup in zip(p_infs, p_sups)]
         fig, ax9 = plt.subplots(constrained_layout=True)
-        ax9.plot(ts, p_tot, marker = 'o', color='darkorange', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
+        ax9.plot(ts, p_tot, marker = 'o', color='darkorange', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}', linestyle = 'none')
         ax9.set_xlabel(r't [s]', fontsize=fs)
         ax9.set_ylabel(r"Probabilité totale $P_{tot}$", fontsize=fs)
         ax9.tick_params(axis="both", labelsize=fs)
-        ax9.set_ylim(255.999999999994, 256.000000000001)
         ax9.legend(fontsize=fs)
         ax9.grid(True)
 
       if energy :
         fig, ax6 = plt.subplots(constrained_layout=True)
-        ax6.plot(ts, E, marker = 'o', color='limegreen', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
+        ax6.plot(ts, E, marker = 'o', color='limegreen', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}', linestyle = 'none')
         ax6.set_xlabel(r't [s]', fontsize=fs)
-        ax6.set_ylabel(r"Hamiltonien [J]", fontsize=fs)
+        ax6.set_ylabel(r"$\langle H \rangle(t)$ [J]", fontsize=fs)
+        #ax6.set_ylim(ymin=2563.556373-1e-11, ymax=2563.556373+1e-11)
         ax6.tick_params(axis="both", labelsize=fs)
         ax6.legend(fontsize=fs)
         ax6.grid(True)
@@ -245,65 +262,83 @@ else :
         fig, ax7 = plt.subplots(constrained_layout=True)
         ax7.plot(ts, delta_prod, marker = 'o', color='deeppink', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
         # ax7.plot(ts, inc_prod, marker = 'o', color='deeppink', mfc='white', label=rf'N_{{steps}} = {Nsteps[j]}')
-        ax7.axhline(y=hbar/2, color='black', linestyle = '--', label=r'$\frac{\hbar}{2}$')
+        ax7.axhline(y=1/2., color='black', linestyle = '--', label=r'$\frac{\hbar}{2}$')
         ax7.set_xlabel(r't [s]', fontsize=fs)
         ax7.set_ylabel(r"$\langle \Delta x \rangle(t) \langle \Delta p \rangle(t)$", fontsize=fs)
         ax7.tick_params(axis="both", labelsize=fs)
         ax7.legend(fontsize=fs, loc='lower left')
         ax7.grid(True)
 
+        fig, ax8 = plt.subplots(constrained_layout=True)
+        ax8.plot(ts, delta_xs, marker = 'o', color='royalblue', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
+        ax8.set_xlabel(r't [s]', fontsize=fs)
+        ax8.set_ylabel(r"$\langle \Delta p \rangle(t)$", fontsize=fs)
+        ax8.tick_params(axis="both", labelsize=fs)
+        ax8.legend(fontsize=fs, loc='lower left')
+        ax8.grid(True)
+
+        fig, ax11 = plt.subplots(constrained_layout=True)
+        ax11.plot(ts, delta_ps, marker = 'o', color='mediumorchid', mfc='white', label=rf'N$_{{steps}}$ = {Nsteps[j]}')
+        ax11.set_xlabel(r't [s]', fontsize=fs)
+        ax11.set_ylabel(r"$\langle \Delta x \rangle(t)$", fontsize=fs)
+        ax11.tick_params(axis="both", labelsize=fs)
+        ax11.legend(fontsize=fs, loc='lower left')
+        ax11.grid(True)
+
     if three :
       xth_fin = x_ths[-1]
       xfin = x_mean[-1]
-      err.append(np.abs(xfin - xth_fin))
+      err.append(np.abs(xfin))
       tfin = 0.08
       L = 2
 
       if time :
+        print(f"i = {i}, Nintervals = {Nsteps[i]}")
         dt = tfin/Nsteps[i]
         step.append(dt)
-
       else :
-        dx = L/Nintervals[i]
+        print(f"i = {j}, Nintervals = {Nintervals[j]}")
+        dx = L/Nintervals[j]
         step.append(dx)
 
   if three :
-    lim_min = min(step)
-    lim_max = max(step)
+    # def power_law(dt, a, C):
+    #     return C * dt**a
+    # result, cov = curve_fit(power_law, step, err)
+    # a, const = result
+    # dtlim = np.linspace(lim_min, lim_max, 15)
+    # log_fit = power_law(dtlim, a, const)
+    print(f'Step = {step}')
+    step2 = [dt**2 for dt in step]
+    lim_min = min(step2)
+    lim_max = max(step2)
+    #
+    dlim = np.linspace(lim_min, lim_max, 15)
 
-    def power_law(dt, a, C):
-        return C * dt**a
+    result = stats.linregress(step2, err)
+    a, b = result.slope, result.intercept
+    print(f"Fiiiiiiitttt = {a} and {b}")
+    fit  = a*dlim + b
 
-    result, cov = curve_fit(power_law, step, err)
-
-    a, const = result
-
-    dtlim = np.linspace(lim_min, lim_max, 15)
-
-    log_fit = power_law(dtlim, a, const)
-
-    fig, ax11 = plt.subplots(constrained_layout=True)
     fig, ax12 = plt.subplots(constrained_layout=True)
     if time :
-      step2 = [dt**2 for dt in step]
-      ax12.plot(step2, err, marker='o', markeredgecolor='forestgreen', linestyle='--', color='white')
+      ax12.scatter(step2, err, marker='o', color='royalblue', facecolor='white')
+      ax12.plot(dlim, fit, linestyle='--', color='royalblue', label=r'$\langle x \rangle(t_{fin}) \propto dt^2$', )
       ax12.set_xlabel(rf'$dt^2$', fontsize=fs)
-      ax12.tick_params(axis="both", labelsize=fs)
-      #ax12.set_xlim(xmin=lim_min, xmax=lim_max)
-      #ax12.legend(fontsize=fs)
-      ax12.grid(True)
       # ax11.loglog(step, err, marker='o', label=rf'$n_{{order}}$ = {np.abs(a):.2f}', markeredgecolor='forestgreen', linestyle='none', color='white')
       # ax11.loglog(dtlim, log_fit, linestyle='--', color='forestgreen', label=r'$|\langle x \rangle - x_{class}|$')
       # ax11.set_xlabel(rf'$dt$', fontsize=fs)
     else :
-      ax11.loglog(step, err, marker='o', label=rf'$n_{{order}}$ = {np.abs(a):.2f}', markeredgecolor='purple', linestyle='none', color='white')
-      ax11.loglog(dtlim, log_fit, linestyle='--', color='purple', label=r'$|\langle x \rangle - x_{class}|$')
-      ax11.set_xlabel(rf'$dx$', fontsize=fs)
-    ax11.set_ylabel(r"$|\langle x \rangle - x_{class}|$ [m]", fontsize=fs)
-    ax11.tick_params(axis="both", labelsize=fs)
-    ax11.set_xlim(xmin=lim_min, xmax=lim_max)
-    ax11.legend(fontsize=fs)
-    ax11.grid(True)
+      ax12.scatter(step2, err, marker='o', color='mediumorchid', facecolor='white')
+      ax12.plot(dlim, fit, linestyle='--', color='mediumorchid', label=r'$\langle x \rangle(t_{fin}) \propto dx^2$', )
+      ax12.set_xlabel(rf'$dx^2$', fontsize=fs)
+    ax12.set_ylabel(r"$|\langle x \rangle(t_{fin})|$ [m]", fontsize=fs)
+    ax12.tick_params(axis="both", labelsize=fs)
+    ax12.xaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+    ax12.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    ax12.set_xlim(xmin=lim_min, xmax=lim_max)
+    ax12.legend(fontsize=fs)
+    ax12.grid(True)
 
     if evolution :
 

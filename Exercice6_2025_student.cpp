@@ -108,7 +108,7 @@ double E(vec_cmplx const& Psi, vec_cmplx const& H_up, vec_cmplx const& H_down, v
 double xmoy(vec_cmplx const& Psi, vector<double> const& x_, double const& dx)
 {
     double x_mean = 0;
-    for (int i = 0; i < Psi.size(); ++i) {
+    for (int i = 0; i < Psi.size()-1; ++i) {
         x_mean += std::real(std::conj(Psi[i])*x_[i]*Psi[i] + std::conj(Psi[i+1])*x_[i+1]*Psi[i+1]);
     }
     return dx*x_mean/2.;
